@@ -9,10 +9,10 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
-import sessionRequests from './routes/sessionRequests.js';
-// import questionRoutes from './routes/questionRoutes.js';
-// import generateInterviewQuestions from './controllers/generateInterviewQuestions.js';
-// import generateConceptExplanation from './controllers/generateConceptExplanation.js';
+import sessionRoutes from './routes/sessionRoutes.js';
+import questionRoutes from './routes/questionRoutes.js';
+import { protect } from './middlewares/authMiddleware.js';
+import {generateConceptExplanation,generateInterviewQuestions} from './controllers/aiController.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -30,11 +30,11 @@ app.use(express.json());
 //routes
 app.use("/api/auth",authRoutes);
 
-app.use("/api/sessions",sessionRequests);
-// app.use("/api/questions",questionRoutes);
+app.use("/api/sessions",sessionRoutes);
+app.use("/api/questions",questionRoutes);
 
-// app.use("/api/ai/generate-questions",protect,generateInterviewQuestions);
-// app.use("/api/ai/generate-explanation",protect,generateConceptExplanation);
+app.use("/api/ai/generate-questions",protect,generateInterviewQuestions);
+app.use("/api/ai/generate-explanation",protect,generateConceptExplanation);
 
 
 

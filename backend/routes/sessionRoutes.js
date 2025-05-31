@@ -1,5 +1,5 @@
 import express from 'express';
-import { createSession, getSessionById,getMySessions,deleteSession } from '../controllers/sessionController.js';
+import { createSession, deleteSession, getMySessions, getSessionById } from '../controllers/sessionController.js';
 import { protect } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
