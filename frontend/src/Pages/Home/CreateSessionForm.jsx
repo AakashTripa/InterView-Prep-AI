@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Input from '../../components/Inputs/Input';
+import SpinnerLoader from '../../components/Loader/SpinnerLoader';
+import axiosInstance from '../../utils/axiosInstance';
+import { API_PATHS } from '../../utils/apiPaths';
 
 const CreateSessionForm = () => {
   const [formData, setFormData] = useState({
@@ -15,7 +18,6 @@ const CreateSessionForm = () => {
 
   const navigate = useNavigate();
 
-  // ✅ Handle form input changes
   const handleChange = (key, value) => {
     setFormData((prevData) => ({
       ...prevData,
@@ -23,7 +25,6 @@ const CreateSessionForm = () => {
     }));
   };
 
-  // ✅ Handle form submission
   const handleCreateSession = async (e) => {
     e.preventDefault();
     const { role, experience, topicsToFocus } = formData;
@@ -34,24 +35,49 @@ const CreateSessionForm = () => {
     }
 
     setError("");
-    // Add your API call here
-    console.log("Creating session with data:", formData);
+    setLoading(true);
+    
+    try {const aiResponse=await axiosInstance.post(API_PATHS.AI.GENERATE_QUESTIONS,{
+      role,
+      experience,
+      topicsToFocus,
+      numberOfQuestions: 10,
+    });
+const generatedQuestions=aiResponse.data;
+
+    const response=await axiosInstance.post(API_PATHS.SESSION.CREATE,{
+      ...formData,
+      questions: generatedQuestions,
+    });
+    if(response.data?.session?._id){
+      navigate(`/interview-prep/${response.data?.session?._id}`);
+    }
+    } catch (err) {
+      if(err.response&& err.response.data.message){
+        setError(err.response.data.message);
+      }else{
+        setError("Something went wrong. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className=''>
-      <h3 className=''>
-        Start a New Interview Journey
+    <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-lg">
+      <h3 className="text-xl font-bold text-gray-800 text-center">
+        🎯 Start a New Interview Journey
       </h3>
-      <p className=''>
+      <p className="text-sm text-gray-600 text-center mt-1 mb-4">
         Fill out a few quick details and unlock your personalized set of interview questions!
       </p>
-      <form onSubmit={handleCreateSession} className=''>
+
+      <form onSubmit={handleCreateSession} className="space-y-4">
         <Input
           value={formData.role}
           onChange={(e) => handleChange("role", e.target.value)}
           label="Target Role"
-          placeholder="(e.g. Frontend Developer, UI/UX Designer, etc.)"
+          placeholder="e.g. Frontend Developer, UI/UX Designer"
           type="text"
         />
 
@@ -59,15 +85,15 @@ const CreateSessionForm = () => {
           value={formData.experience}
           onChange={(e) => handleChange("experience", e.target.value)}
           label="Years of Experience"
-          placeholder="(e.g. 1 year, 3 years, 5+ years)"
+          placeholder="e.g. 1, 3, 5"
           type="number"
         />
 
         <Input
           value={formData.topicsToFocus}
           onChange={(e) => handleChange("topicsToFocus", e.target.value)}
-          label="Topics To Focus On"
-          placeholder="(Comma separated, e.g. React, Node.js, MySQL)"
+          label="Topics to Focus"
+          placeholder="React, Node.js, MySQL"
           type="text"
         />
 
@@ -75,18 +101,22 @@ const CreateSessionForm = () => {
           value={formData.description}
           onChange={(e) => handleChange("description", e.target.value)}
           label="Description"
-          placeholder="(Any specific goals or notes for this session)"
+          placeholder="Any specific goals for this session"
           type="text"
         />
 
-        {error && <p className='text-red-500'>{error}</p>}
+        {error && <p className="text-red-500 text-sm">{error}</p>}
 
         <button
-          type='submit'
-          className='bg-blue-500 text-white px-4 py-2 rounded mt-4 disabled:opacity-50'
+          type="submit"
           disabled={isLoading}
+          className={`w-full py-2 rounded-lg text-white font-semibold transition duration-200 ${
+            isLoading
+              ? 'bg-blue-400 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700'
+          }`}
         >
-          {isLoading ? "Creating..." : "Create Session"}
+          {isLoading && <SpinnerLoader />}Create Session
         </button>
       </form>
     </div>

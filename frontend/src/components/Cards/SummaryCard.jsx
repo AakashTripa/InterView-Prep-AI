@@ -42,13 +42,13 @@ const SummaryCard = ({
 </div>
 
 <button
-className='hidden group:hover:flex items-center gap-2 text-xs text-rose-500 font-medium bg-rose-500 px-3 py-1 rounded text-nowrap border border-rose-100 hover:border-rose-200 cursor-pointer absolute top-0 right-0'
-onClick={(e)=>{
-e.stopPropagation();
-onDelete();
-}}
+  className='absolute top-2 right-2 group-hover:flex hidden items-center gap-2 text-xs text-white font-medium bg-rose-500 px-2 py-1 rounded border border-rose-200 hover:border-rose-300 z-10'
+  onClick={(e) => {
+    e.stopPropagation();
+    onDelete?.(); // Optional chaining to avoid error
+  }}
 >
-  <LuTrash2/>
+  <LuTrash2 size={14} />
 </button>
       </div>
 <div className='px-3 pb-3'>

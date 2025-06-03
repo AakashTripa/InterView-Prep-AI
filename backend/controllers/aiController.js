@@ -5,7 +5,9 @@ dotenv.config();
 const ai = new GoogleGenAI({apiKey:process.env.GOOGLE_API_KEY});
 
 export const generateInterviewQuestions=async(req,res)=>{
+    
     try{
+        //   console.log("Incoming data:", req.body);
         const {role, experience, topicsToFocus, numberOfQuestions}=req.body;
 if(!role || !experience || !topicsToFocus || !numberOfQuestions){
     return res.status(400).json({message:"Missing Required fields"});
