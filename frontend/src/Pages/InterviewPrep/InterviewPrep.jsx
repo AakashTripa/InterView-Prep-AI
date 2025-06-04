@@ -7,16 +7,21 @@ import SpinnerLoader from "../../components/Loader/SpinnerLoader";
 import { toast } from "react-hot-toast";
 import DashboardLayout from "../../components/layouts/DashboardLayout";
 import RoleInfoHeader from "../../components/RoleInfoHeader";
+
 import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
 import QuestionCard from "../../components/Cards/QuestionCard";
+import Drawer from "../../components/Drawer";
+import AIResponsePreview from "../../components/AIResponsePreview";
+import SkeletonLoader from "../../components/Loader/SkeletonLoader";
+
 const InterviewPrep = () => {
   const { sessionId } = useParams();
   const [sessionData, setSessionData] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
 
   const [openLeanMoreDrawer, setOpenLeanMoreDrawer] = useState(false);
-  const [explaination, setExplanation] = useState(null);
+  const [explanation, setExplanation] = useState(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdateLoader, setIsUpdateLoader] = useState(false);
@@ -34,11 +39,83 @@ const InterviewPrep = () => {
     }
   };
 
-  const generateConceptExplanation = async (question) => {};
+  const generateConceptExplanation = async (question) => {
+    try {
+      setErrorMsg("");
+      setExplanation(null);
+      setIsLoading(true);
+      setOpenLeanMoreDrawer(true);
 
-  const toggleQuestionPinStatus = async (questionId) => {};
+      const response = await axiosInstance.post(
+        API_PATHS.AI.GENERATE_EXPLANATION,
+        {
+          question,
+        }
+      );
+      // console.log("Backend response:", response.data);
+      setExplanation(response.data);
+    } catch (error) {
+      setExplanation(null);
+      setErrorMsg("Failed to generate explanation, Try again Later");
+      console.log("Error", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  const toggleQuestionPinStatus = async (questionId) => {
+    try {
+      const response = await axiosInstance.put(
+        API_PATHS.QUESTION.PIN(questionId)
+      );
+      console.log("Pin response:", response.data);
 
-  const uploadMoreQuestions = async () => {};
+      toast.success(response.data?.message || "Pin status updated");
+
+      fetchSessionDetailsById();
+    } catch (error) {
+      console.error("Pin error:", error);
+      toast.error("Failed to update pin status");
+    }
+  };
+
+  const uploadMoreQuestions = async () => {
+    try {
+      setIsUpdateLoader(true);
+      const aiResponse = await axiosInstance.post(
+        API_PATHS.AI.GENERATE_QUESTIONS,
+        {
+          role: sessionData?.role,
+          experience: sessionData?.experience,
+          topicsToFocus: sessionData?.topicsToFocus,
+          numberOfQuestions: 10,
+        }
+      );
+
+      //should be an array like data
+
+      const generatedQuestions = aiResponse.data;
+
+      const response = await axiosInstance.post(
+        API_PATHS.QUESTION.ADD_TO_SESSION,
+        {
+          sessionId,
+          questions: generatedQuestions,
+        }
+      );
+      if (response.data) {
+        toast.success("Added More Questions and answers!!");
+        fetchSessionDetailsById();
+      }
+    } catch (error) {
+      if(error.response && error.response.data.message){
+        setErrorMsg(error.response.data.message);
+      }else{
+        setErrorMsg("Something went wrong, Please Try again later");
+      }
+    }finally{
+      setIsUpdateLoader(false);
+    }
+  };
 
   useEffect(() => {
     if (sessionId) {
@@ -47,6 +124,13 @@ const InterviewPrep = () => {
 
     return () => {};
   }, []);
+
+  // ✅ Sort pinned questions to top
+  const sortedQuestions = [...(sessionData?.questions || [])].sort((a, b) => {
+    if (a.isPinned === b.isPinned) return 0;
+    return a.isPinned ? -1 : 1;
+  });
+
   return (
     <DashboardLayout>
       <RoleInfoHeader
@@ -71,7 +155,7 @@ const InterviewPrep = () => {
             } `}
           >
             <AnimatePresence>
-              {sessionData?.questions?.map((data, index) => (
+              {sortedQuestions.map((data, index) => (
                 <motion.div
                   key={data._id || index}
                   initial={{ opacity: 0, y: -20 }}
@@ -99,11 +183,47 @@ const InterviewPrep = () => {
                         toggleQuestionPinStatus(data?._id);
                       }}
                     />
+
+                    {!isLoading &&
+                      sessionData?.questions?.length === index + 1 && (
+                        <div className="flex items-center justify-center mt-5">
+                          <button
+                            className="flex items-center gap-3 text-sm font-semibold text-white font-medium bg-black px-5 py-2 mr-2 rounded text-nowrap cursor-pointer hover:bg-orange-600/15 hover:text-black"
+                            disabled={isLoading || isUpdateLoader}
+                            onClick={uploadMoreQuestions}
+                          >
+                            {isUpdateLoader ? (
+                              <SpinnerLoader />
+                            ) : (
+                              <LuListCollapse className="text-lg" />
+                            )}{" "}
+                            Load More
+                          </button>
+                        </div>
+                      )}
                   </>
                 </motion.div>
               ))}
             </AnimatePresence>
           </div>
+        </div>
+
+        <div>
+          <Drawer
+            isOpen={openLeanMoreDrawer}
+            onClose={() => setOpenLeanMoreDrawer(false)}
+            title={!isLoading && explanation?.title} // Correctly access title
+          >
+            {errorMsg && (
+              <p className="flex gap-2 text-sm text-amber-600 font-medium">
+                <LuCircleAlert className="mt-1" /> {errorMsg}
+              </p>
+            )}
+            {isLoading && <SkeletonLoader />}
+            {!isLoading && explanation && (
+              <AIResponsePreview answer={explanation?.explaination} /> // Match backend key 'explaination'
+            )}
+          </Drawer>
         </div>
       </div>
     </DashboardLayout>

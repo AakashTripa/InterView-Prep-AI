@@ -4,7 +4,7 @@ import { protect } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
-router.get('/add',protect,addQuestionsToSession);
+router.post('/add',protect,addQuestionsToSession);
 
 router.put('/:id/pin',protect,togglePinQuestion);
 router.put('/:id/note',protect,updateQuestionNote);
