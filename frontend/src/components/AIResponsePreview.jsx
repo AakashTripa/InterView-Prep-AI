@@ -35,7 +35,7 @@ function CodeBlock({ code, language }) {
               <span className="ml-1 text-xs">Copied</span>
             </>
           ) : (
-            <LuCopy size={16} />
+            <LuCopy size={16} className="cursor-pointer"/>
           )}
         </button>
       </div>

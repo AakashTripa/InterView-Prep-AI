@@ -25,9 +25,10 @@ const InterviewPrep = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdateLoader, setIsUpdateLoader] = useState(false);
-
+const [isQuestionsLoading, setIsQuestionsLoading] = useState(true);
   const fetchSessionDetailsById = async () => {
     try {
+         setIsQuestionsLoading(true);
       const response = await axiosInstance.get(
         API_PATHS.SESSION.GET_ONE(sessionId)
       );
@@ -36,6 +37,8 @@ const InterviewPrep = () => {
       }
     } catch (error) {
       console.log("Error:", error);
+    }finally{
+      setIsQuestionsLoading(false);
     }
   };
 
@@ -52,7 +55,6 @@ const InterviewPrep = () => {
           question,
         }
       );
-      // console.log("Backend response:", response.data);
       setExplanation(response.data);
     } catch (error) {
       setExplanation(null);
@@ -62,15 +64,13 @@ const InterviewPrep = () => {
       setIsLoading(false);
     }
   };
+
   const toggleQuestionPinStatus = async (questionId) => {
     try {
       const response = await axiosInstance.put(
         API_PATHS.QUESTION.PIN(questionId)
       );
-      console.log("Pin response:", response.data);
-
       toast.success(response.data?.message || "Pin status updated");
-
       fetchSessionDetailsById();
     } catch (error) {
       console.error("Pin error:", error);
@@ -91,8 +91,6 @@ const InterviewPrep = () => {
         }
       );
 
-      //should be an array like data
-
       const generatedQuestions = aiResponse.data;
 
       const response = await axiosInstance.post(
@@ -107,12 +105,12 @@ const InterviewPrep = () => {
         fetchSessionDetailsById();
       }
     } catch (error) {
-      if(error.response && error.response.data.message){
+      if (error.response && error.response.data.message) {
         setErrorMsg(error.response.data.message);
-      }else{
+      } else {
         setErrorMsg("Something went wrong, Please Try again later");
       }
-    }finally{
+    } finally {
       setIsUpdateLoader(false);
     }
   };
@@ -121,11 +119,9 @@ const InterviewPrep = () => {
     if (sessionId) {
       fetchSessionDetailsById();
     }
-
     return () => {};
   }, []);
 
-  // ✅ Sort pinned questions to top
   const sortedQuestions = [...(sessionData?.questions || [])].sort((a, b) => {
     if (a.isPinned === b.isPinned) return 0;
     return a.isPinned ? -1 : 1;
@@ -144,67 +140,79 @@ const InterviewPrep = () => {
             ? moment(sessionData?.updatedAt).format("DD-MM-YYYY")
             : ""
         }
+        className="bg-blue-50 text-blue-900"
       />
-      <div className="container mx-auto pt-4 pb-4 px-4 md:px-0">
-        <h2 className="text-lg font-semibold color-black">Interview Q & A</h2>
+      <div className="container mx-auto pt-6 pb-6 px-6 md:px-0 bg-gradient-to-b from-blue-50 via-white to-white min-h-screen">
+        <h2 className="text-xl font-bold text-blue-800 mb-6 border-b border-blue-200 pb-2">
+          Interview Q &amp; A
+        </h2>
 
-        <div className="grid grid-cols-12 gap-4 mt-5 mb-10">
+        <div className="grid grid-cols-12 gap-6 mt-6 mb-12">
           <div
             className={`col-span-12 ${
               openLeanMoreDrawer ? "md:col-span-7" : "md:col-span-8"
-            } `}
-          >
-            <AnimatePresence>
-              {sortedQuestions.map((data, index) => (
-                <motion.div
-                  key={data._id || index}
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{
-                    duration: 0.4,
-                    type: "spring",
-                    damping: 15,
-                    stiffness: 100,
-                    delay: index * 0.1,
-                  }}
-                  layout
-                  layoutId={`Question-${data._id || index}`}
-                >
-                  <>
-                    <QuestionCard
-                      question={data?.question}
-                      answer={data?.answer}
-                      onLearnMore={() => {
-                        generateConceptExplanation(data?.question);
-                      }}
-                      isPinned={data?.isPinned}
-                      onTogglePin={() => {
-                        toggleQuestionPinStatus(data?._id);
-                      }}
-                    />
+            }`}
+          > {isQuestionsLoading ? (
+              // Show 5 skeleton loaders as placeholder
+              <>
+                {[...Array(5)].map((_, idx) => (
+                  <SkeletonLoader key={idx} className="mb-6" />
+                ))}
+              </>
+            ) : (
+              <AnimatePresence>
+                {sortedQuestions.map((data, index) => (
+                  <motion.div
+                    key={data._id || index}
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{
+                      duration: 0.4,
+                      type: "spring",
+                      damping: 15,
+                      stiffness: 100,
+                      delay: index * 0.1,
+                    }}
+                    layout
+                    layoutId={`Question-${data._id || index}`}
+                  >
+                    <>
+                      <QuestionCard
+                        question={data?.question}
+                        answer={data?.answer}
+                        onLearnMore={() => {
+                          generateConceptExplanation(data?.question);
+                        }}
+                        isPinned={data?.isPinned}
+                        onTogglePin={() => {
+                          toggleQuestionPinStatus(data?._id);
+                        }}
+                        className="bg-white border border-blue-200 shadow-sm hover:shadow-md"
+                      />
 
-                    {!isLoading &&
-                      sessionData?.questions?.length === index + 1 && (
-                        <div className="flex items-center justify-center mt-5">
-                          <button
-                            className="flex items-center gap-3 text-sm font-semibold text-white font-medium bg-black px-5 py-2 mr-2 rounded text-nowrap cursor-pointer hover:bg-orange-600/15 hover:text-black"
-                            disabled={isLoading || isUpdateLoader}
-                            onClick={uploadMoreQuestions}
-                          >
-                            {isUpdateLoader ? (
-                              <SpinnerLoader />
-                            ) : (
-                              <LuListCollapse className="text-lg" />
-                            )}{" "}
-                            Load More
-                          </button>
-                        </div>
-                      )}
-                  </>
-                </motion.div>
-              ))}
-            </AnimatePresence>
+                      {!isLoading &&
+                        sessionData?.questions?.length === index + 1 && (
+                          <div className="flex items-center justify-center mt-6">
+                            <button
+                              className="flex items-center gap-3 text-sm font-semibold text-white bg-blue-700 px-6 py-2 rounded-md cursor-pointer hover:bg-blue-800 transition-colors duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
+                              disabled={isLoading || isUpdateLoader}
+                              onClick={uploadMoreQuestions}
+                            >
+                              {isUpdateLoader ? (
+                                <SpinnerLoader />
+                              ) : (
+                                <LuListCollapse className="text-lg" />
+                              )}{" "}
+                              Load More
+                            </button>
+                          </div>
+                        )}
+                    </>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            )}
           </div>
         </div>
 
@@ -212,16 +220,20 @@ const InterviewPrep = () => {
           <Drawer
             isOpen={openLeanMoreDrawer}
             onClose={() => setOpenLeanMoreDrawer(false)}
-            title={!isLoading && explanation?.title} // Correctly access title
+            title={!isLoading && explanation?.title}
+            className="bg-white text-blue-900"
           >
             {errorMsg && (
-              <p className="flex gap-2 text-sm text-amber-600 font-medium">
+              <p className="flex gap-2 text-sm text-red-600 font-medium">
                 <LuCircleAlert className="mt-1" /> {errorMsg}
               </p>
             )}
             {isLoading && <SkeletonLoader />}
             {!isLoading && explanation && (
-              <AIResponsePreview answer={explanation?.explaination} /> // Match backend key 'explaination'
+              <AIResponsePreview
+                answer={explanation?.explaination}
+                className="prose prose-blue max-w-none"
+              />
             )}
           </Drawer>
         </div>
